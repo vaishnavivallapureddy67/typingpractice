@@ -1066,8 +1066,6 @@
             }
         }
 
-        }
-
         showScreen(screenId, params = {}) {
             this.stopTimer();
 
