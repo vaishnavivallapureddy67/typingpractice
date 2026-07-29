@@ -52,6 +52,8 @@ def read_root():
 def health_check():
     return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
 
+from sqlalchemy import text, func
+
 # AUTHENTICATION ENDPOINTS
 
 @app.post("/api/auth/register", response_model=schemas.Token)
@@ -59,9 +61,9 @@ def register(user_in: schemas.UserRegister, db: Session = Depends(get_db)):
     clean_username = user_in.username.strip().lower()
     clean_email = user_in.email.strip().lower()
 
-    if db.query(models.User).filter(models.User.username == clean_username).first():
+    if db.query(models.User).filter(func.lower(models.User.username) == clean_username).first():
         raise HTTPException(status_code=400, detail="Username already taken. Please choose another.")
-    if db.query(models.User).filter(models.User.email == clean_email).first():
+    if db.query(models.User).filter(func.lower(models.User.email) == clean_email).first():
         raise HTTPException(status_code=400, detail="Email address already registered. Please sign in.")
 
     new_user = models.User(
@@ -85,7 +87,7 @@ def register(user_in: schemas.UserRegister, db: Session = Depends(get_db)):
 def login(login_in: schemas.UserLogin, db: Session = Depends(get_db)):
     clean_ident = login_in.identifier.strip().lower()
     user = db.query(models.User).filter(
-        (models.User.email == clean_ident) | (models.User.username == clean_ident)
+        (func.lower(models.User.email) == clean_ident) | (func.lower(models.User.username) == clean_ident)
     ).first()
 
     if not user:

@@ -430,7 +430,7 @@
 
         async register({ fullName, username, email, password }) {
             try {
-                const res = await fetch(`${API_BASE_URL}/api/auth/register`, {
+                const res = await fetchWithRetry(`${API_BASE_URL}/api/auth/register`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ fullName, username, email, password })
@@ -445,27 +445,14 @@
                     };
                     this.setAuthSession(user, data.access_token, true);
                     return { user, access_token: data.access_token };
+                } else {
+                    const errData = await res.json().catch(() => ({}));
+                    throw new Error(errData.detail || "Registration failed. Username or email may already be registered.");
                 }
             } catch (err) {
-                console.warn("Backend API offline, proceeding with local registration fallback:", err);
+                console.error("Registration error:", err);
+                throw err;
             }
-
-            const users = this.getAllUsers();
-            let newUser = { id: Date.now(), fullName: fullName.trim(), username: username.trim(), email: email.trim().toLowerCase(), passwordHash: hashPassword(password), created_at: new Date().toISOString(), xp: 0, level: 1, streakCount: 0, badges: [] };
-
-            const uIdx = users.findIndex(u => u.email.toLowerCase() === email.trim().toLowerCase() || u.username.toLowerCase() === username.trim().toLowerCase());
-            if (uIdx !== -1) {
-                users[uIdx].fullName = fullName.trim();
-                users[uIdx].passwordHash = hashPassword(password);
-                newUser = users[uIdx];
-            } else {
-                users.push(newUser);
-            }
-
-            localStorage.setItem(KEY_USERS, JSON.stringify(users));
-            const token = generateJWT(newUser);
-            this.setAuthSession(newUser, token, true);
-            return { user: newUser, access_token: token };
         }
 
         async login({ identifier, password, rememberMe = true }) {
