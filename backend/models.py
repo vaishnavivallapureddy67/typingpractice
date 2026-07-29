@@ -11,6 +11,7 @@ class User(Base):
     username = Column(String, unique=True, index=True, nullable=False)
     email = Column(String, unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)
+    google_sub = Column(String, nullable=True, index=True)
     xp = Column(Integer, default=0)
     level = Column(Integer, default=1)
     streak_count = Column(Integer, default=0)

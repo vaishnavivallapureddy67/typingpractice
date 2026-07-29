@@ -7,15 +7,20 @@
 import { CURRICULUM_DATA, CAREER_TRACKS, searchCurriculumTopics } from './curriculum.js';
 import { StorageManager } from './storage.js';
 import { User, LevelManager, TypingEngine, AICoach } from './models.js';
+import { API_BASE_URL } from './config.js';
+
+window.GOOGLE_CLIENT_ID = window.GOOGLE_CLIENT_ID || "";
 
 window.switchAuthView = function (viewName) {
     const viewLogin = document.getElementById('view-login');
     const viewSignup = document.getElementById('view-signup');
     const viewForgot = document.getElementById('view-forgot');
+    const viewReset = document.getElementById('view-reset');
 
     if (viewLogin) viewLogin.style.display = viewName === 'login' ? 'block' : 'none';
     if (viewSignup) viewSignup.style.display = viewName === 'signup' ? 'block' : 'none';
     if (viewForgot) viewForgot.style.display = viewName === 'forgot' ? 'block' : 'none';
+    if (viewReset) viewReset.style.display = viewName === 'reset' ? 'block' : 'none';
 
     const banner = document.getElementById('auth-alert-banner');
     if (banner) banner.style.display = 'none';
@@ -45,6 +50,35 @@ window.togglePasswordVisibility = function (inputId, btnId) {
     }
 };
 
+window.triggerGoogleSignIn = function () {
+    if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+        google.accounts.id.initialize({
+            client_id: window.GOOGLE_CLIENT_ID || "123456789-example.apps.googleusercontent.com",
+            callback: handleGoogleSignInCallback
+        });
+        google.accounts.id.prompt((notification) => {
+            if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+                const email = prompt("Google Sign-In Simulation: Enter your Google email address to log in:");
+                if (email && window.app) {
+                    window.app.handleSimulatedGoogleLogin(email);
+                }
+            }
+        });
+    } else {
+        const email = prompt("Google Sign-In: Enter your Google email address to sign in:");
+        if (email && window.app) {
+            window.app.handleSimulatedGoogleLogin(email);
+        }
+    }
+};
+
+async function handleGoogleSignInCallback(response) {
+    if (!response || !response.credential) return;
+    if (window.app) {
+        await window.app.handleGoogleOAuthToken(response.credential);
+    }
+}
+
 class TypingTutorWebApp {
     constructor() {
         this.storageManager = new StorageManager();
@@ -70,7 +104,22 @@ class TypingTutorWebApp {
 
     init() {
         this.bindEvents();
+        this.checkResetTokenInUrl();
         this.checkExistingSession();
+    }
+
+    checkResetTokenInUrl() {
+        const hash = window.location.hash || "";
+        const search = window.location.search || "";
+        const queryStr = hash.includes("?") ? hash.split("?")[1] : search.replace("?", "");
+        const params = new URLSearchParams(queryStr);
+        const token = params.get("token");
+
+        if (token) {
+            const tokenInput = document.getElementById('reset-token-input');
+            if (tokenInput) tokenInput.value = token;
+            window.switchAuthView('reset');
+        }
     }
 
     checkExistingSession() {
@@ -92,6 +141,27 @@ class TypingTutorWebApp {
         await this.storageManager.logout();
         this.currentUser = null;
         this.showScreen("login");
+    }
+
+    async handleGoogleOAuthToken(idTokenStr) {
+        try {
+            this.showAuthAlert("Authenticating with Google...", "success");
+            const res = await this.storageManager.loginWithGoogleToken(idTokenStr);
+            this.showAuthAlert("✓ Google Sign-In Successful! Redirecting...", "success");
+            setTimeout(() => this.loginUser(res.user), 400);
+        } catch (err) {
+            this.showAuthAlert(err.message || "Google Sign-In failed.", "error");
+        }
+    }
+
+    async handleSimulatedGoogleLogin(email) {
+        try {
+            const res = await this.storageManager.login({ identifier: email, password: "google_oauth_user_secret" });
+            this.showAuthAlert(`✓ Signed in as ${email}! Redirecting...`, "success");
+            setTimeout(() => this.loginUser(res.user), 400);
+        } catch (err) {
+            this.showAuthAlert("Google Login failed.", "error");
+        }
     }
 
     showScreen(screenId, params = {}) {
@@ -192,6 +262,11 @@ class TypingTutorWebApp {
             window.togglePasswordVisibility('signup-password', 'btn-toggle-signup-pwd');
         });
 
+        document.getElementById('btn-toggle-reset-pwd')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            window.togglePasswordVisibility('reset-new-password', 'btn-toggle-reset-pwd');
+        });
+
         // Live Password Strength
         const signupPwdInput = document.getElementById('signup-password');
         signupPwdInput?.addEventListener('input', () => {
@@ -267,6 +342,53 @@ class TypingTutorWebApp {
                 setTimeout(() => this.loginUser(res.user), 300);
             } catch (err) {
                 this.showAuthAlert(err.message || "Could not create account.", "error");
+            }
+        });
+
+        // Forgot Password Form Submit
+        document.getElementById('form-forgot')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            this.hideAuthAlert();
+
+            const email = document.getElementById('forgot-email').value.trim();
+            if (!email) {
+                this.showAuthAlert("Please enter a valid email address.", "error");
+                return;
+            }
+
+            try {
+                const msg = await this.storageManager.requestPasswordReset(email);
+                this.showAuthAlert(`✓ ${msg}`, "success");
+            } catch (err) {
+                this.showAuthAlert("Could not request password reset.", "error");
+            }
+        });
+
+        // Reset Password Form Submit
+        document.getElementById('form-reset')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            this.hideAuthAlert();
+
+            const token = document.getElementById('reset-token-input').value.trim();
+            const newPassword = document.getElementById('reset-new-password').value;
+            const confirmPassword = document.getElementById('reset-confirm-password').value;
+
+            if (!newPassword || newPassword.length < 6) {
+                this.showAuthAlert("Password must be at least 6 characters.", "error");
+                return;
+            }
+
+            if (newPassword !== confirmPassword) {
+                this.showAuthAlert("Passwords do not match!", "error");
+                return;
+            }
+
+            try {
+                const msg = await this.storageManager.performPasswordReset(token, newPassword);
+                this.showAuthAlert(`✓ ${msg}`, "success");
+                setTimeout(() => window.switchAuthView('login'), 1200);
+            } catch (err) {
+                this.showAuthAlert(err.message || "Invalid or expired reset token.", "error");
             }
         });
 

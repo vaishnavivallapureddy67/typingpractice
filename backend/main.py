@@ -1,4 +1,5 @@
 import os
+import secrets
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -79,7 +80,7 @@ def login(login_in: schemas.UserLogin, db: Session = Depends(get_db)):
         (models.User.email == clean_ident) | (models.User.username == clean_ident)
     ).first()
 
-    # Auto-register fallback for seamless deployment testing
+    # Auto-register fallback for seamless testing
     if not user:
         username = clean_ident.split('@')[0] if '@' in clean_ident else clean_ident
         user = models.User(
@@ -95,6 +96,81 @@ def login(login_in: schemas.UserLogin, db: Session = Depends(get_db)):
 
     token = auth.create_access_token({"sub": str(user.id), "username": user.username, "email": user.email})
     return {"access_token": token, "token_type": "bearer", "user": user}
+
+# GOOGLE OAUTH ENDPOINT
+@app.post("/api/auth/google", response_model=schemas.Token)
+def google_auth(req: schemas.GoogleAuthRequest, db: Session = Depends(get_db)):
+    # 1. Verify Google ID Token
+    google_data = auth.verify_google_id_token(req.token)
+    email = google_data["email"].strip().lower()
+    sub = google_data["sub"]
+    name = google_data["name"]
+
+    # 2. Check if User Exists
+    user = db.query(models.User).filter(
+        (models.User.email == email) | (models.User.google_sub == sub)
+    ).first()
+
+    # 3. Create Account if New User
+    if not user:
+        base_username = email.split('@')[0]
+        username = base_username
+        counter = 1
+        while db.query(models.User).filter(models.User.username == username).first():
+            username = f"{base_username}{counter}"
+            counter += 1
+
+        user = models.User(
+            full_name=name,
+            username=username,
+            email=email,
+            password_hash=auth.get_password_hash(secrets.token_urlsafe(16)),
+            google_sub=sub,
+            xp=0, level=1, streak_count=0, badges=[]
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    elif not user.google_sub:
+        user.google_sub = sub
+        db.commit()
+
+    # 4. Return Normal JWT Access Token
+    token = auth.create_access_token({"sub": str(user.id), "username": user.username, "email": user.email})
+    return {"access_token": token, "token_type": "bearer", "user": user}
+
+# FORGOT & RESET PASSWORD ENDPOINTS
+
+@app.post("/api/auth/forgot-password")
+def forgot_password(req: schemas.ForgotPasswordRequest, db: Session = Depends(get_db)):
+    email = req.email.strip().lower()
+    user = db.query(models.User).filter(models.User.email == email).first()
+
+    # To prevent email enumeration, return friendly message even if user not found
+    if not user:
+        return {"status": "success", "message": "If an account exists with that email, a password reset link has been sent."}
+
+    # Generate Token and Send Reset Email
+    reset_token = auth.create_reset_token(email)
+    msg = auth.send_reset_password_email(email, reset_token)
+
+    return {"status": "success", "message": "Password reset instructions sent to your email address.", "details": msg}
+
+@app.post("/api/auth/reset-password")
+def reset_password(req: schemas.ResetPasswordRequest, db: Session = Depends(get_db)):
+    # 1. Verify Reset Token
+    email = auth.verify_reset_token(req.token)
+
+    # 2. Find User
+    user = db.query(models.User).filter(models.User.email == email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User account not found.")
+
+    # 3. Update Password Hash
+    user.password_hash = auth.get_password_hash(req.new_password)
+    db.commit()
+
+    return {"status": "success", "message": "Password reset successful! You can now sign in with your new password."}
 
 @app.get("/api/auth/me", response_model=schemas.UserResponse)
 def get_me(current_user: models.User = Depends(auth.get_current_user)):
@@ -113,11 +189,9 @@ def save_stage_progress(
     if not current_user:
         return {"status": "guest_mode_saved"}
 
-    # Add XP
     current_user.xp += 20
     current_user.level = (current_user.xp // 100) + 1
 
-    # Record Progress
     prog_record = models.LessonProgress(
         user_id=current_user.id,
         category=progress_in.category,

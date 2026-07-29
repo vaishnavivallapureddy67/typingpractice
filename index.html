@@ -8,6 +8,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Google Identity Services (GIS) Library -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 
@@ -59,7 +61,7 @@
                             <p class="auth-subtitle">Master typing speed, programming syntax & accuracy</p>
                         </div>
 
-                        <button type="button" class="btn-oauth-google" id="btn-oauth-google" onclick="if(window.app) window.app.showAuthAlert('✓ Google OAuth UI ready.', 'success'); return false;">
+                        <button type="button" class="btn-oauth-google" id="btn-oauth-google" onclick="if(window.triggerGoogleSignIn) window.triggerGoogleSignIn(); return false;">
                             <svg width="20" height="20" viewBox="0 0 24 24">
                                 <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"/>
                                 <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"/>
@@ -155,7 +157,7 @@
 
                             <div class="or-divider" style="margin: 1.25rem 0 1rem 0;"><span class="or-text">or register with</span></div>
 
-                            <button type="button" class="btn-oauth-google" id="btn-signup-oauth-google" onclick="if(window.app) window.app.showAuthAlert('✓ Google OAuth UI ready.', 'success'); return false;">
+                            <button type="button" class="btn-oauth-google" id="btn-signup-oauth-google" onclick="if(window.triggerGoogleSignIn) window.triggerGoogleSignIn(); return false;">
                                 <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"/><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"/><path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 10.8 0 12s.7 2.3 1.9 4.7l3.7-1.9z"/><path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16C3.7 19.7 7.5 23 12 23z"/></svg>
                                 <span>Google</span>
                             </button>
@@ -184,6 +186,39 @@
 
                             <div class="auth-switch-footer">
                                 <a href="#" id="link-forgot-back-login" class="auth-switch-link" onclick="if(window.switchAuthView) window.switchAuthView('login'); return false;">← Back to Sign In</a>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- VIEW 4: RESET PASSWORD -->
+                    <div id="view-reset" class="auth-view-content" style="display: none;">
+                        <div class="auth-header">
+                            <h1 class="auth-title">Set New Password</h1>
+                            <p class="auth-subtitle">Enter your new password below to reset your credentials</p>
+                        </div>
+
+                        <form id="form-reset" onsubmit="return false;">
+                            <input type="hidden" id="reset-token-input" value="">
+                            <div class="form-group">
+                                <label for="reset-new-password" class="uppercase-label">NEW PASSWORD</label>
+                                <div class="password-field-group">
+                                    <input type="password" id="reset-new-password" class="dark-input" placeholder="••••••••" required autocomplete="new-password">
+                                    <button type="button" class="btn-toggle-eye" id="btn-toggle-reset-pwd" onclick="if(window.togglePasswordVisibility) window.togglePasswordVisibility('reset-new-password', 'btn-toggle-reset-pwd'); return false;">
+                                        <span class="eye-icon">👁️</span>
+                                        <span class="eye-text">SHOW</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="reset-confirm-password" class="uppercase-label">CONFIRM NEW PASSWORD</label>
+                                <input type="password" id="reset-confirm-password" class="dark-input" placeholder="••••••••" required autocomplete="new-password">
+                            </div>
+
+                            <button type="submit" class="btn-auth-primary" id="btn-submit-reset">Update Password</button>
+
+                            <div class="auth-switch-footer">
+                                <a href="#" class="auth-switch-link" onclick="if(window.switchAuthView) window.switchAuthView('login'); return false;">← Back to Sign In</a>
                             </div>
                         </form>
                     </div>

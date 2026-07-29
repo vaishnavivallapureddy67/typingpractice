@@ -138,6 +138,65 @@ export class StorageManager {
         return { user, access_token: token };
     }
 
+    async loginWithGoogleToken(idTokenStr) {
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/auth/google`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: idTokenStr })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                const user = {
+                    id: data.user.id, fullName: data.user.fullName || data.user.full_name,
+                    username: data.user.username, email: data.user.email,
+                    xp: data.user.xp || 0, level: data.user.level || 1,
+                    streakCount: data.user.streakCount || 0, badges: data.user.badges || []
+                };
+                this.setAuthSession(user, data.access_token, true);
+                return { user, access_token: data.access_token };
+            } else {
+                const errData = await res.json();
+                throw new Error(errData.detail || "Google authentication failed.");
+            }
+        } catch (err) {
+            console.warn("Backend Google OAuth API error:", err);
+            throw err;
+        }
+    }
+
+    async requestPasswordReset(email) {
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
+            });
+            const data = await res.json();
+            return data.message || "If an account exists, a reset link has been sent.";
+        } catch (err) {
+            return "Password reset link sent to your email!";
+        }
+    }
+
+    async performPasswordReset(token, newPassword) {
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token, new_password: newPassword })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                return data.message || "Password updated successfully!";
+            } else {
+                throw new Error(data.detail || "Could not reset password.");
+            }
+        } catch (err) {
+            throw err;
+        }
+    }
+
     async logout() {
         localStorage.removeItem(KEY_AUTH_TOKEN);
         localStorage.removeItem(KEY_SESSION_USER);

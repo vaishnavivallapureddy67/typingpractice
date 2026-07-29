@@ -1,17 +1,27 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
 
 class UserRegister(BaseModel):
     fullName: str
     username: str
-    email: EmailStr
+    email: str
     password: str
 
 class UserLogin(BaseModel):
     identifier: str
     password: str
     rememberMe: Optional[bool] = True
+
+class GoogleAuthRequest(BaseModel):
+    token: str
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
 
 class Token(BaseModel):
     access_token: str
