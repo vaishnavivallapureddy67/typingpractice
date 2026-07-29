@@ -12,6 +12,22 @@
         ? 'http://localhost:8000'
         : 'https://typingpractice-1.onrender.com';
 
+    async function fetchWithRetry(url, options = {}, retries = 3, delay = 1500) {
+        for (let i = 0; i <= retries; i++) {
+            try {
+                const res = await fetch(url, options);
+                return res;
+            } catch (err) {
+                if (i === retries) throw err;
+                await new Promise(r => setTimeout(r, delay * (i + 1)));
+            }
+        }
+    }
+
+    if (typeof window !== 'undefined') {
+        fetch(`${API_BASE_URL}/health`).catch(() => {});
+    }
+
     window.GOOGLE_CLIENT_ID = window.GOOGLE_CLIENT_ID || "";
 
     window.switchAuthView = function (viewName) {
@@ -454,7 +470,7 @@
 
         async login({ identifier, password, rememberMe = true }) {
             try {
-                const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
+                const res = await fetchWithRetry(`${API_BASE_URL}/api/auth/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ identifier, password })
@@ -481,7 +497,7 @@
 
         async loginWithGoogleToken(idTokenStr) {
             try {
-                const res = await fetch(`${API_BASE_URL}/api/auth/google`, {
+                const res = await fetchWithRetry(`${API_BASE_URL}/api/auth/google`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ token: idTokenStr })
@@ -501,7 +517,7 @@
                     throw new Error(errData.detail || `Google authentication failed (${res.status}).`);
                 }
             } catch (err) {
-                console.warn("Backend Google OAuth API error, fallback to simulated account:", err);
+                console.warn("Backend Google OAuth API error:", err);
                 throw err;
             }
         }

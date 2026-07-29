@@ -95,9 +95,21 @@ export class StorageManager {
         return { user: newUser, access_token: token };
     }
 
+async function fetchWithRetry(url, options = {}, retries = 3, delay = 1500) {
+    for (let i = 0; i <= retries; i++) {
+        try {
+            const res = await fetch(url, options);
+            return res;
+        } catch (err) {
+            if (i === retries) throw err;
+            await new Promise(r => setTimeout(r, delay * (i + 1)));
+        }
+    }
+}
+
     async login({ identifier, password, rememberMe = true }) {
         try {
-            const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
+            const res = await fetchWithRetry(`${API_BASE_URL}/api/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ identifier, password })
@@ -124,7 +136,7 @@ export class StorageManager {
 
     async loginWithGoogleToken(idTokenStr) {
         try {
-            const res = await fetch(`${API_BASE_URL}/api/auth/google`, {
+            const res = await fetchWithRetry(`${API_BASE_URL}/api/auth/google`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ token: idTokenStr })
