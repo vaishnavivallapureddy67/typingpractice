@@ -4,9 +4,10 @@
  * Central configuration module for TypingTutor Web Application.
  * Stores global constants, keyboard row classifications, theme palettes, and category definitions.
  */
-
 export const APP_NAME = "TypingTutor Web";
 export const VERSION = "1.0.0";
+
+export const API_BASE_URL = "https://typingpractice-1.onrender.com";
 
 export const LEVELS_PER_CATEGORY = 10;
 
