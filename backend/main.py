@@ -20,12 +20,23 @@ app = FastAPI(
 )
 
 # CORS Setup for Vercel Frontend
-allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "*")
-origins = [origin.strip() for origin in allowed_origins_env.split(",") if origin.strip()]
+allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "")
+origins = [
+    "https://typingpractice-alpha.vercel.app",
+    "http://localhost:8080",
+    "http://localhost:3000",
+    "http://127.0.0.1:8080",
+]
+if allowed_origins_env and allowed_origins_env != "*":
+    for origin in allowed_origins_env.split(","):
+        o = origin.strip()
+        if o and o not in origins:
+            origins.append(o)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins if origins else ["*"],
+    allow_origins=origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

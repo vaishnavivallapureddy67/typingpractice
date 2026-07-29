@@ -1067,7 +1067,7 @@
                 this.updateNavbarUserBadge();
             }
 
-            if (screenId === 'login') this.renderLoginScreen();
+            if (screenId === 'login') { if (window.switchAuthView) window.switchAuthView('login'); }
             else if (screenId === 'dashboard') this.renderDashboardScreen();
             else if (screenId === 'tracks') this.renderCareerTracksScreen();
             else if (screenId === 'categories') this.renderCategoryScreen();
