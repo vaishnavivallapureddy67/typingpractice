@@ -50,34 +50,68 @@ window.togglePasswordVisibility = function (inputId, btnId) {
     }
 };
 
+// Fetch Google Client ID from Render Backend API on startup
+fetch(`${API_BASE_URL}/api/auth/google/config`)
+    .then(res => res.json())
+    .then(data => {
+        if (data.client_id) {
+            window.GOOGLE_CLIENT_ID = data.client_id;
+        }
+    })
+    .catch(() => {});
+
 window.triggerGoogleSignIn = function () {
-    if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
-        google.accounts.id.initialize({
-            client_id: window.GOOGLE_CLIENT_ID || "123456789-example.apps.googleusercontent.com",
-            callback: handleGoogleSignInCallback
-        });
-        google.accounts.id.prompt((notification) => {
-            if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-                const email = prompt("Google Sign-In Simulation: Enter your Google email address to log in:");
-                if (email && window.app) {
-                    window.app.handleSimulatedGoogleLogin(email);
+    const clientId = window.GOOGLE_CLIENT_ID || "";
+
+    if (!clientId) {
+        if (window.app) {
+            window.app.showAuthAlert("⚠️ Google Client ID is not configured. Please set GOOGLE_CLIENT_ID in your Render environment variables.", "error");
+        } else {
+            alert("Google Client ID is missing. Please set GOOGLE_CLIENT_ID in your Render backend settings.");
+        }
+        return;
+    }
+
+    if (typeof google === 'undefined' || !google.accounts) {
+        if (window.app) {
+            window.app.showAuthAlert("Loading Google Sign-In SDK... Please try again in a few seconds.", "error");
+        }
+        return;
+    }
+
+    // Official Google Identity Services OAuth2 Token Client (Opens Official Google Account Chooser Popup)
+    if (google.accounts.oauth2 && google.accounts.oauth2.initTokenClient) {
+        const client = google.accounts.oauth2.initTokenClient({
+            client_id: clientId,
+            scope: 'openid email profile',
+            callback: async (tokenResponse) => {
+                if (tokenResponse && tokenResponse.access_token) {
+                    if (window.app) {
+                        await window.app.handleGoogleOAuthToken(tokenResponse.access_token);
+                    }
+                } else if (tokenResponse && tokenResponse.error) {
+                    console.warn("Google OAuth Error:", tokenResponse.error);
+                    if (window.app) {
+                        window.app.showAuthAlert("Google Sign-In was cancelled.", "error");
+                    }
                 }
             }
         });
-    } else {
-        const email = prompt("Google Sign-In: Enter your Google email address to sign in:");
-        if (email && window.app) {
-            window.app.handleSimulatedGoogleLogin(email);
-        }
+
+        // Opens official Google Popup window directly on click!
+        client.requestAccessToken({ prompt: 'select_account' });
+    } else if (google.accounts.id) {
+        google.accounts.id.initialize({
+            client_id: clientId,
+            callback: async (response) => {
+                if (response && response.credential && window.app) {
+                    await window.app.handleGoogleOAuthToken(response.credential);
+                }
+            }
+        });
+        google.accounts.id.prompt();
     }
 };
-
-async function handleGoogleSignInCallback(response) {
-    if (!response || !response.credential) return;
-    if (window.app) {
-        await window.app.handleGoogleOAuthToken(response.credential);
-    }
-}
 
 class TypingTutorWebApp {
     constructor() {
@@ -154,14 +188,6 @@ class TypingTutorWebApp {
         }
     }
 
-    async handleSimulatedGoogleLogin(email) {
-        try {
-            const res = await this.storageManager.login({ identifier: email, password: "google_oauth_user_secret" });
-            this.showAuthAlert(`✓ Signed in as ${email}! Redirecting...`, "success");
-            setTimeout(() => this.loginUser(res.user), 400);
-        } catch (err) {
-            this.showAuthAlert("Google Login failed.", "error");
-        }
     }
 
     showScreen(screenId, params = {}) {

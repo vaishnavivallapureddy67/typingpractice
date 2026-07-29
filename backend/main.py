@@ -97,7 +97,11 @@ def login(login_in: schemas.UserLogin, db: Session = Depends(get_db)):
     token = auth.create_access_token({"sub": str(user.id), "username": user.username, "email": user.email})
     return {"access_token": token, "token_type": "bearer", "user": user}
 
-# GOOGLE OAUTH ENDPOINT
+# GOOGLE OAUTH ENDPOINTS
+@app.get("/api/auth/google/config")
+def get_google_config():
+    return {"client_id": os.getenv("GOOGLE_CLIENT_ID", "")}
+
 @app.post("/api/auth/google", response_model=schemas.Token)
 def google_auth(req: schemas.GoogleAuthRequest, db: Session = Depends(get_db)):
     # 1. Verify Google ID Token

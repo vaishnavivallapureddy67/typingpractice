@@ -55,18 +55,37 @@ def get_current_user(token: Optional[str] = Depends(oauth2_scheme), db: Session 
     user = db.query(models.User).filter(models.User.username == username).first()
     return user
 
-# GOOGLE OAUTH ID TOKEN VERIFICATION
+# GOOGLE OAUTH TOKEN VERIFICATION
 def verify_google_id_token(token_str: str) -> Dict[str, str]:
     """
-    Verifies Google ID Token via Google Auth library or tokeninfo endpoint fallback.
+    Verifies Google ID Token or Access Token via Google OAuth APIs.
     Returns payload containing 'sub', 'email', 'name', 'picture'.
     """
+    # 1. Try Google UserInfo API (for OAuth Access Tokens)
+    try:
+        resp = requests.get(
+            "https://www.googleapis.com/oauth2/v3/userinfo",
+            headers={"Authorization": f"Bearer {token_str}"},
+            timeout=5
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            if data.get("email"):
+                return {
+                    "sub": data.get("sub"),
+                    "email": data.get("email"),
+                    "name": data.get("name", data.get("email", "").split("@")[0]),
+                    "picture": data.get("picture", "")
+                }
+    except Exception:
+        pass
+
+    # 2. Try google.oauth2.id_token verification (for ID Tokens)
     try:
         from google.oauth2 import id_token
         from google.auth.transport import requests as google_requests
 
         request = google_requests.Request()
-        # Verify token with Google's public keys
         id_info = id_token.verify_oauth2_token(
             token_str, request, GOOGLE_CLIENT_ID if GOOGLE_CLIENT_ID else None
         )
@@ -76,24 +95,27 @@ def verify_google_id_token(token_str: str) -> Dict[str, str]:
             "name": id_info.get("name", id_info.get("email", "").split("@")[0]),
             "picture": id_info.get("picture", "")
         }
-    except Exception as e:
-        # Fallback to direct HTTP verification endpoint
-        try:
-            resp = requests.get(f"https://oauth2.googleapis.com/tokeninfo?id_token={token_str}", timeout=5)
-            if resp.status_code == 200:
-                data = resp.json()
-                return {
-                    "sub": data.get("sub"),
-                    "email": data.get("email"),
-                    "name": data.get("name", data.get("email", "").split("@")[0]),
-                    "picture": data.get("picture", "")
-                }
-        except Exception:
-            pass
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid Google ID Token credentials."
-        )
+    except Exception:
+        pass
+
+    # 3. Fallback to Google TokenInfo endpoint
+    try:
+        resp = requests.get(f"https://oauth2.googleapis.com/tokeninfo?id_token={token_str}", timeout=5)
+        if resp.status_code == 200:
+            data = resp.json()
+            return {
+                "sub": data.get("sub"),
+                "email": data.get("email"),
+                "name": data.get("name", data.get("email", "").split("@")[0]),
+                "picture": data.get("picture", "")
+            }
+    except Exception:
+        pass
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid Google OAuth credentials. Could not verify account with Google."
+    )
 
 # PASSWORD RESET TOKEN & EMAIL FUNCTIONS
 def create_reset_token(email: str) -> str:
