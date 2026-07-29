@@ -58,7 +58,7 @@ class DailyGoal(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    date = Column(String, nullable=False, index=True)  # YYYY-MM-DD
+    date = Column(String, nullable=False, index=True)
     lessons_completed = Column(Integer, default=0)
     chars_typed = Column(Integer, default=0)
     mins_practiced = Column(Integer, default=0)
