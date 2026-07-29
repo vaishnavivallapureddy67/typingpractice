@@ -8,7 +8,7 @@
 (function () {
     'use strict';
 
-    const API_BASE_URL = (typeof window !== 'undefined' && window.location.hostname === 'localhost')
+    const API_BASE_URL = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
         ? 'http://localhost:8000'
         : 'https://typingpractice-1.onrender.com';
 

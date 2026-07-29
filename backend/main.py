@@ -19,23 +19,11 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS Setup for Vercel Frontend
-allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "")
-origins_list = [
-    "https://typingpractice-alpha.vercel.app",
-    "http://localhost:8080",
-    "http://localhost:3000",
-    "http://localhost:8000"
-]
-if allowed_origins_env and allowed_origins_env != "*":
-    for o in allowed_origins_env.split(","):
-        if o.strip() and o.strip() not in origins_list:
-            origins_list.append(o.strip())
-
+# Universal CORS Setup for Vercel Frontend & Local Dev
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins_list if (allowed_origins_env != "*") else ["*"],
-    allow_credentials=False if (allowed_origins_env == "*") else True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
