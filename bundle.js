@@ -34,6 +34,12 @@
         const btn = document.getElementById(btnId);
         if (!input) return;
 
+        const now = Date.now();
+        if (btn && btn._lastToggleTime && (now - btn._lastToggleTime < 250)) {
+            return;
+        }
+        if (btn) btn._lastToggleTime = now;
+
         if (input.type === 'password') {
             input.type = 'text';
             if (btn) {
