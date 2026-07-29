@@ -53,22 +53,41 @@
         }
     };
 
-    // Fetch Google Client ID from Render Backend API on startup
-    fetch(`${API_BASE_URL}/api/auth/google/config`)
-        .then(res => res.json())
-        .then(data => {
-            if (data.client_id) {
-                window.GOOGLE_CLIENT_ID = data.client_id;
+    async function getOrFetchGoogleClientId() {
+        if (window.GOOGLE_CLIENT_ID && window.GOOGLE_CLIENT_ID.trim()) {
+            return window.GOOGLE_CLIENT_ID.trim();
+        }
+        const metaTag = document.querySelector('meta[name="google-signin-client_id"]');
+        if (metaTag && metaTag.content && metaTag.content.trim()) {
+            window.GOOGLE_CLIENT_ID = metaTag.content.trim();
+            return window.GOOGLE_CLIENT_ID;
+        }
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/auth/google/config`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.client_id && data.client_id.trim()) {
+                    window.GOOGLE_CLIENT_ID = data.client_id.trim();
+                    return window.GOOGLE_CLIENT_ID;
+                }
             }
-        })
-        .catch(() => {});
+        } catch (err) {
+            console.warn("Could not fetch Google Client ID from backend:", err);
+        }
+        return "";
+    }
 
-    window.triggerGoogleSignIn = function () {
-        const clientId = window.GOOGLE_CLIENT_ID || "";
+    // Pre-fetch Google Client ID from Render Backend API on load
+    getOrFetchGoogleClientId();
+
+    window.triggerGoogleSignIn = async function () {
+        if (window.app) window.app.showAuthAlert("Connecting to Google...", "success");
+
+        const clientId = await getOrFetchGoogleClientId();
 
         if (!clientId) {
             if (window.app) {
-                window.app.showAuthAlert("⚠️ Google Client ID is not configured. Please set GOOGLE_CLIENT_ID in your Render environment variables.", "error");
+                window.app.showAuthAlert("⚠️ Google Client ID is missing. Please ensure GOOGLE_CLIENT_ID is set in Render environment variables.", "error");
             } else {
                 alert("Google Client ID is missing. Please set GOOGLE_CLIENT_ID in your Render backend settings.");
             }
@@ -77,7 +96,7 @@
 
         if (typeof google === 'undefined' || !google.accounts) {
             if (window.app) {
-                window.app.showAuthAlert("Loading Google Sign-In SDK... Please try again in a few seconds.", "error");
+                window.app.showAuthAlert("Loading Google Sign-In SDK... Please click again in 2 seconds.", "error");
             }
             return;
         }
