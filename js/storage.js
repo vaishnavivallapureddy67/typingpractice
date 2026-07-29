@@ -140,8 +140,8 @@ export class StorageManager {
                 this.setAuthSession(user, data.access_token, true);
                 return { user, access_token: data.access_token };
             } else {
-                const errData = await res.json();
-                throw new Error(errData.detail || "Google authentication failed.");
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.detail || `Google authentication failed (${res.status}).`);
             }
         } catch (err) {
             console.warn("Backend Google OAuth API error:", err);

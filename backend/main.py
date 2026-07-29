@@ -5,13 +5,25 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 
+from sqlalchemy import text
 from database import engine, Base, get_db
 import models
 import schemas
 import auth
 
-# Auto-create Database Tables on startup
+# Auto-create Database Tables & perform safe schema migrations on startup
 Base.metadata.create_all(bind=engine)
+
+with engine.connect() as conn:
+    try:
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub VARCHAR;"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS xp INTEGER DEFAULT 0;"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 1;"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS streak_count INTEGER DEFAULT 0;"))
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS badges JSON DEFAULT '[]';"))
+        conn.commit()
+    except Exception as e:
+        print("Schema migration log:", e)
 
 app = FastAPI(
     title="TypingTutor Web API",
