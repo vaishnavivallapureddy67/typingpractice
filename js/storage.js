@@ -71,28 +71,16 @@ export class StorageManager {
                 };
                 this.setAuthSession(user, data.access_token, true);
                 return { user, access_token: data.access_token };
+            } else {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.detail || "Registration failed. Please try again.");
             }
         } catch (err) {
-            console.warn("Backend API offline, proceeding with local registration fallback:", err);
+            if (err.message && (err.message.includes("taken") || err.message.includes("registered") || err.message.includes("failed") || err.message.includes("Invalid"))) {
+                throw err;
+            }
+            throw new Error("Could not connect to registration server. Please check your internet connection or try again.");
         }
-
-        const users = this.getAllUsers();
-        if (users.some(u => u.username.toLowerCase() === username.trim().toLowerCase())) throw new Error("Username is already taken.");
-        if (users.some(u => u.email.toLowerCase() === email.trim().toLowerCase())) throw new Error("Email already registered.");
-
-        const newUser = {
-            id: Date.now(), fullName: fullName.trim(), username: username.trim(),
-            email: email.trim().toLowerCase(), phone: phone.trim(),
-            passwordHash: hashPassword(password), created_at: new Date().toISOString(),
-            xp: 0, level: 1, streakCount: 0, badges: [], certificates: []
-        };
-
-        users.push(newUser);
-        localStorage.setItem(KEY_USERS, JSON.stringify(users));
-
-        const token = generateJWT(newUser);
-        this.setAuthSession(newUser, token, true);
-        return { user: newUser, access_token: token };
     }
 
     async login({ identifier, password, rememberMe = true }) {
