@@ -463,33 +463,14 @@
                     };
                     this.setAuthSession(user, data.access_token, rememberMe);
                     return { user, access_token: data.access_token };
+                } else {
+                    const errData = await res.json().catch(() => ({}));
+                    throw new Error(errData.detail || "Invalid email/username or password.");
                 }
             } catch (err) {
-                console.warn("Backend API offline, proceeding with local login fallback:", err);
+                console.error("Login error:", err);
+                throw err;
             }
-
-            const users = this.getAllUsers();
-            const cleanIdent = (identifier || "user@example.com").trim().toLowerCase();
-            let user = users.find(u => u.email.toLowerCase() === cleanIdent || u.username.toLowerCase() === cleanIdent);
-
-            if (!user) {
-                const uname = cleanIdent.split('@')[0] || "user";
-                user = {
-                    id: Date.now(), fullName: uname, username: uname,
-                    email: cleanIdent.includes('@') ? cleanIdent : `${cleanIdent}@example.com`,
-                    passwordHash: hashPassword(password || "password"),
-                    created_at: new Date().toISOString(), xp: 0, level: 1, streakCount: 0, badges: []
-                };
-                users.push(user);
-                localStorage.setItem(KEY_USERS, JSON.stringify(users));
-            } else {
-                user.passwordHash = hashPassword(password || "password");
-                localStorage.setItem(KEY_USERS, JSON.stringify(users));
-            }
-
-            const token = generateJWT(user);
-            this.setAuthSession(user, token, rememberMe);
-            return { user, access_token: token };
         }
 
         async loginWithGoogleToken(idTokenStr) {

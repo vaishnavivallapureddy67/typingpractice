@@ -80,19 +80,17 @@ def login(login_in: schemas.UserLogin, db: Session = Depends(get_db)):
         (models.User.email == clean_ident) | (models.User.username == clean_ident)
     ).first()
 
-    # Auto-register fallback for seamless testing
     if not user:
-        username = clean_ident.split('@')[0] if '@' in clean_ident else clean_ident
-        user = models.User(
-            full_name=username,
-            username=username,
-            email=clean_ident if '@' in clean_ident else f"{clean_ident}@example.com",
-            password_hash=auth.get_password_hash(login_in.password or "password"),
-            xp=0, level=1, streak_count=0, badges=[]
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email/username or password."
         )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
+
+    if not auth.verify_password(login_in.password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email/username or password."
+        )
 
     token = auth.create_access_token({"sub": str(user.id), "username": user.username, "email": user.email})
     return {"access_token": token, "token_type": "bearer", "user": user}
