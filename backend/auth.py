@@ -148,8 +148,13 @@ def send_reset_password_email(to_email: str, reset_token: str) -> str:
     """Sends password reset email via Resend API, SendGrid API, or SMTP."""
     reset_url = f"{FRONTEND_URL}/#reset-password?token={reset_token}"
 
-    resend_api_key = os.getenv("RESEND_API_KEY", "")
-    sendgrid_api_key = os.getenv("SENDGRID_API_KEY", "")
+    resend_api_key = os.getenv("RESEND_API_KEY", "").strip()
+    sendgrid_api_key = os.getenv("SENDGRID_API_KEY", "").strip()
+
+    if "Copied!" in sendgrid_api_key:
+        sendgrid_api_key = sendgrid_api_key.replace("Copied!", "").strip()
+    if "Copied!" in resend_api_key:
+        resend_api_key = resend_api_key.replace("Copied!", "").strip()
 
     # 1. Resend API Provider (resend.com)
     if resend_api_key:
@@ -189,6 +194,7 @@ def send_reset_password_email(to_email: str, reset_token: str) -> str:
     # 2. SendGrid API Provider (sendgrid.com)
     if sendgrid_api_key:
         try:
+            sender_addr = os.getenv("FROM_EMAIL", os.getenv("SMTP_USER", "vaishnavivallapureddy67@gmail.com")).strip()
             resp = requests.post(
                 "https://api.sendgrid.com/v3/mail/send",
                 headers={
@@ -197,7 +203,7 @@ def send_reset_password_email(to_email: str, reset_token: str) -> str:
                 },
                 json={
                     "personalizations": [{"to": [{"email": to_email}]}],
-                    "from": {"email": os.getenv("FROM_EMAIL", "noreply@typingtutor.com"), "name": "TypingTutor"},
+                    "from": {"email": sender_addr, "name": "TypingTutor"},
                     "subject": "Password Reset - TypingTutor Web",
                     "content": [{"type": "text/html", "value": f"""
                     <div style="font-family: Arial, sans-serif; max-width: 500px; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
@@ -215,7 +221,10 @@ def send_reset_password_email(to_email: str, reset_token: str) -> str:
                 timeout=10
             )
             if resp.status_code in [200, 201, 202]:
+                print(f"[SendGrid API Success] Reset email sent to {to_email}")
                 return "Password reset link sent to your email inbox!"
+            else:
+                print(f"[SendGrid API Notice] HTTP {resp.status_code}: {resp.text}")
         except Exception as e:
             print("[SendGrid API Error]:", e)
 
