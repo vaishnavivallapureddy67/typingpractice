@@ -418,6 +418,11 @@ class TypingTutorWebApp {
             try {
                 const msg = await this.storageManager.performPasswordReset(token, newPassword);
                 this.showAuthAlert(`✓ ${msg}`, "success");
+                if (window.history && window.history.replaceState) {
+                    window.history.replaceState(null, "", window.location.pathname);
+                } else {
+                    window.location.hash = "";
+                }
                 setTimeout(() => window.switchAuthView('login'), 1200);
             } catch (err) {
                 this.showAuthAlert(err.message || "Invalid or expired reset token.", "error");
