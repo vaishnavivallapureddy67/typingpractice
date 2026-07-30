@@ -1,6 +1,7 @@
 import os
 import secrets
 from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
@@ -28,6 +29,16 @@ app = FastAPI(
     description="FastAPI Backend for TypingTutor Web Application",
     version="1.0.0"
 )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc: Exception):
+    import traceback
+    traceback.print_exc()
+    res = JSONResponse(status_code=500, content={"detail": f"Server Error: {str(exc)}"})
+    origin = request.headers.get("origin", "*")
+    res.headers["Access-Control-Allow-Origin"] = origin
+    res.headers["Access-Control-Allow-Credentials"] = "true"
+    return res
 
 # CORS Setup for Vercel Frontend
 allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "")
