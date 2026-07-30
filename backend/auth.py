@@ -156,42 +156,7 @@ def send_reset_password_email(to_email: str, reset_token: str) -> str:
     if "Copied!" in resend_api_key:
         resend_api_key = resend_api_key.replace("Copied!", "").strip()
 
-    # 1. Resend API Provider (resend.com)
-    if resend_api_key:
-        try:
-            resp = requests.post(
-                "https://api.resend.com/emails",
-                headers={
-                    "Authorization": f"Bearer {resend_api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "from": os.getenv("FROM_EMAIL", "TypingTutor <onboarding@resend.dev>"),
-                    "to": [to_email],
-                    "subject": "Password Reset - TypingTutor Web",
-                    "html": f"""
-                    <div style="font-family: Arial, sans-serif; max-width: 500px; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
-                        <h2 style="color: #4F46E5;">TypingTutor Password Reset</h2>
-                        <p>Hello,</p>
-                        <p>You requested a password reset for your TypingTutor account. Click the button below to set a new password:</p>
-                        <p style="text-align: center; margin: 25px 0;">
-                            <a href="{reset_url}" style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Reset Password</a>
-                        </p>
-                        <p style="font-size: 0.85em; color: #666;">Or copy and paste this URL into your browser:<br><a href="{reset_url}">{reset_url}</a></p>
-                        <p style="font-size: 0.8em; color: #999;">This link will expire in 15 minutes. If you did not request this, please ignore this email.</p>
-                    </div>
-                    """
-                },
-                timeout=10
-            )
-            if resp.status_code in [200, 201, 202]:
-                return "Password reset link sent to your email inbox!"
-            else:
-                print(f"[Resend API Notice] HTTP {resp.status_code}: {resp.text}")
-        except Exception as e:
-            print("[Resend API Error]:", e)
-
-    # 2. SendGrid API Provider (sendgrid.com)
+    # 1. SendGrid API Provider (sendgrid.com - Primary)
     if sendgrid_api_key:
         try:
             sender_addr = os.getenv("FROM_EMAIL", os.getenv("SMTP_USER", "vaishnavivallapureddy67@gmail.com")).strip()
@@ -227,6 +192,41 @@ def send_reset_password_email(to_email: str, reset_token: str) -> str:
                 print(f"[SendGrid API Notice] HTTP {resp.status_code}: {resp.text}")
         except Exception as e:
             print("[SendGrid API Error]:", e)
+
+    # 2. Resend API Provider (resend.com - Secondary)
+    if resend_api_key:
+        try:
+            resp = requests.post(
+                "https://api.resend.com/emails",
+                headers={
+                    "Authorization": f"Bearer {resend_api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "from": os.getenv("FROM_EMAIL", "TypingTutor <onboarding@resend.dev>"),
+                    "to": [to_email],
+                    "subject": "Password Reset - TypingTutor Web",
+                    "html": f"""
+                    <div style="font-family: Arial, sans-serif; max-width: 500px; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+                        <h2 style="color: #4F46E5;">TypingTutor Password Reset</h2>
+                        <p>Hello,</p>
+                        <p>You requested a password reset for your TypingTutor account. Click the button below to set a new password:</p>
+                        <p style="text-align: center; margin: 25px 0;">
+                            <a href="{reset_url}" style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Reset Password</a>
+                        </p>
+                        <p style="font-size: 0.85em; color: #666;">Or copy and paste this URL into your browser:<br><a href="{reset_url}">{reset_url}</a></p>
+                        <p style="font-size: 0.8em; color: #999;">This link will expire in 15 minutes. If you did not request this, please ignore this email.</p>
+                    </div>
+                    """
+                },
+                timeout=10
+            )
+            if resp.status_code in [200, 201, 202]:
+                return "Password reset link sent to your email inbox!"
+            else:
+                print(f"[Resend API Notice] HTTP {resp.status_code}: {resp.text}")
+        except Exception as e:
+            print("[Resend API Error]:", e)
 
     # 3. SMTP Provider (Gmail, SendGrid SMTP, Mailgun, Custom SMTP)
     smtp_user = os.getenv("SMTP_USER", "")
