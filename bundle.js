@@ -1274,11 +1274,24 @@
                     return;
                 }
 
+                const submitBtn = document.getElementById('btn-submit-forgot');
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.innerText = "Sending Email...";
+                }
+
+                this.showAuthAlert("⏳ Sending password reset email... Please wait a moment.", "success");
+
                 try {
                     const msg = await this.storageManager.requestPasswordReset(email);
-                    this.showAuthAlert(`✓ ${msg}`, "success");
+                    this.showAuthAlert(`✓ Password reset email sent! Please check your inbox and Spam/Junk folder.`, "success");
                 } catch (err) {
-                    this.showAuthAlert("Could not request password reset.", "error");
+                    this.showAuthAlert("Could not request password reset. Please try again.", "error");
+                } finally {
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerText = "Send Reset Link";
+                    }
                 }
             });
 
