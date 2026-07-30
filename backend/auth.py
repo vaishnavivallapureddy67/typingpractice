@@ -220,11 +220,19 @@ def send_reset_password_email(to_email: str, reset_token: str) -> str:
             print("[SendGrid API Error]:", e)
 
     # 3. SMTP Provider (Gmail, SendGrid SMTP, Mailgun, Custom SMTP)
-    if SMTP_USER and SMTP_PASSWORD:
+    smtp_user = os.getenv("SMTP_USER", "")
+    smtp_password = os.getenv("SMTP_PASSWORD", "")
+    smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    try:
+        smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    except ValueError:
+        smtp_port = 587
+
+    if smtp_user and smtp_password:
         try:
             msg = MIMEMultipart("alternative")
             msg["Subject"] = "Password Reset - TypingTutor Web"
-            msg["From"] = f"TypingTutor <{SMTP_USER}>"
+            msg["From"] = f"TypingTutor <{smtp_user}>"
             msg["To"] = to_email
 
             text_content = f"Hello,\n\nYou requested a password reset for TypingTutor. Click the link below to set a new password:\n{reset_url}\n\nThis link expires in 15 minutes."
@@ -243,13 +251,19 @@ def send_reset_password_email(to_email: str, reset_token: str) -> str:
             msg.attach(MIMEText(text_content, "plain"))
             msg.attach(MIMEText(html_content, "html"))
 
-            with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
-                server.starttls()
-                server.login(SMTP_USER, SMTP_PASSWORD)
-                server.send_message(msg)
+            if smtp_port == 465:
+                with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=10) as server:
+                    server.login(smtp_user, smtp_password)
+                    server.send_message(msg)
+            else:
+                with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as server:
+                    server.starttls()
+                    server.login(smtp_user, smtp_password)
+                    server.send_message(msg)
 
+            print(f"[SMTP Success] Password reset email sent to {to_email}")
             return "Password reset link sent to your email inbox!"
         except Exception as err:
-            print(f"[SMTP Error] Could not send via SMTP: {err}")
+            print(f"[SMTP Error Details] Could not send via SMTP to {to_email}: {type(err).__name__} - {err}")
 
     return "If an account with this email exists, password reset instructions have been dispatched."
