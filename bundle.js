@@ -492,9 +492,9 @@
                     body: JSON.stringify({ email })
                 });
                 const data = await res.json();
-                return data.message || "If an account exists, a reset link has been sent.";
+                return data.message || "Password reset instructions sent!";
             } catch (err) {
-                return "Password reset link sent to your email!";
+                return "Could not connect to password reset server.";
             }
         }
 
