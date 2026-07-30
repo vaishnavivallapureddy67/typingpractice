@@ -182,22 +182,16 @@ def forgot_password(req: schemas.ForgotPasswordRequest, db: Session = Depends(ge
     user = db.query(models.User).filter(models.User.email == email).first()
 
     if not user:
-        return {"status": "success", "message": "If an account exists with that email, a password reset link has been sent."}
+        return {"status": "success", "message": "If an account with this email exists, we've sent a password reset link."}
 
     reset_token = auth.create_reset_token(email)
     msg = auth.send_reset_password_email(email, reset_token)
-    reset_url = f"{auth.FRONTEND_URL}/#reset-password?token={reset_token}"
 
-    res_data = {
+    return {
         "status": "success",
-        "message": "Password reset instructions sent to your email address.",
+        "message": "If an account with this email exists, we've sent a password reset link.",
         "details": msg
     }
-    if not auth.SMTP_USER or not auth.SMTP_PASSWORD:
-        res_data["reset_link"] = reset_url
-        res_data["message"] = f"Reset link generated: {reset_url}"
-
-    return res_data
 
 @app.post("/api/auth/reset-password")
 def reset_password(req: schemas.ResetPasswordRequest, db: Session = Depends(get_db)):
