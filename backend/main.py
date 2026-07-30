@@ -10,8 +10,18 @@ import models
 import schemas
 import auth
 
+from sqlalchemy import text, Session
+
 # Auto-create Database Tables on startup
 Base.metadata.create_all(bind=engine)
+
+# Safe column migration for pre-existing Render PostgreSQL tables
+try:
+    with engine.connect() as conn:
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub VARCHAR;"))
+        conn.commit()
+except Exception as e:
+    print("[DB Migration Notice]:", e)
 
 app = FastAPI(
     title="TypingTutor Web API",
