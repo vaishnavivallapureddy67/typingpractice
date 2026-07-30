@@ -30,17 +30,20 @@ class Token(BaseModel):
 
 class UserResponse(BaseModel):
     id: int
-    fullName: str
+    fullName: Optional[str] = ""
+    full_name: Optional[str] = ""
     username: str
     email: str
-    xp: int
-    level: int
-    streakCount: int
-    badges: List[str]
-    created_at: datetime
+    xp: Optional[int] = 0
+    level: Optional[int] = 1
+    streakCount: Optional[int] = 0
+    streak_count: Optional[int] = 0
+    badges: Optional[List[str]] = []
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
+        orm_mode = True
 
 class StageProgressCreate(BaseModel):
     category: str

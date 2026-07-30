@@ -18,6 +18,14 @@ class User(Base):
     badges = Column(JSON, default=list)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    @property
+    def fullName(self) -> str:
+        return self.full_name or ""
+
+    @property
+    def streakCount(self) -> int:
+        return self.streak_count or 0
+
     progress_records = relationship("LessonProgress", back_populates="user", cascade="all, delete-orphan")
     language_stats = relationship("LanguageStat", back_populates="user", cascade="all, delete-orphan")
     daily_goals = relationship("DailyGoal", back_populates="user", cascade="all, delete-orphan")
