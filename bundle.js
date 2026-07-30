@@ -1000,25 +1000,31 @@
 
         init() {
             this.bindEvents();
-            this.checkResetTokenInUrl();
-            this.checkExistingSession();
+            const hasResetToken = this.checkResetTokenInUrl();
+            if (!hasResetToken) {
+                this.checkExistingSession();
+            }
         }
 
         checkResetTokenInUrl() {
             const hash = window.location.hash || "";
             const search = window.location.search || "";
-            const queryStr = hash.includes("?") ? hash.split("?")[1] : search.replace("?", "");
+            const queryStr = hash.includes("?") ? hash.split("?")[1] : (search.includes("?") ? search.split("?")[1] : search);
             const params = new URLSearchParams(queryStr);
             const token = params.get("token");
 
             if (token) {
                 const tokenInput = document.getElementById('reset-token-input');
                 if (tokenInput) tokenInput.value = token;
-                window.switchAuthView('reset');
+                if (window.switchAuthView) window.switchAuthView('reset');
+                return true;
             }
+            return false;
         }
 
         checkExistingSession() {
+            if (this.checkResetTokenInUrl()) return;
+
             const userObj = this.storageManager.getCurrentUser();
             if (userObj) {
                 this.currentUser = new User(userObj, this.storageManager);
@@ -1062,13 +1068,15 @@
             const navbar = document.getElementById('main-navbar');
             if (screenId === 'login') {
                 navbar.style.display = 'none';
+                const hasResetToken = (window.location.hash || "").includes("token=") || (window.location.search || "").includes("token=");
+                if (!hasResetToken && window.switchAuthView) {
+                    window.switchAuthView('login');
+                }
             } else {
                 navbar.style.display = 'flex';
                 this.updateNavbarUserBadge();
             }
-
-            if (screenId === 'login') { if (window.switchAuthView) window.switchAuthView('login'); }
-            else if (screenId === 'dashboard') this.renderDashboardScreen();
+            if (screenId === 'dashboard') this.renderDashboardScreen();
             else if (screenId === 'tracks') this.renderCareerTracksScreen();
             else if (screenId === 'categories') this.renderCategoryScreen();
             else if (screenId === 'modules') this.renderModulesScreen(params.category || this.currentCategory);
