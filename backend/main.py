@@ -10,7 +10,7 @@ import models
 import schemas
 import auth
 
-from sqlalchemy import text, Session
+from sqlalchemy import text
 
 # Auto-create Database Tables on startup
 Base.metadata.create_all(bind=engine)
