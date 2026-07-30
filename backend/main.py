@@ -69,30 +69,37 @@ def health_check():
 
 @app.post("/api/auth/register", response_model=schemas.Token)
 def register(user_in: schemas.UserRegister, db: Session = Depends(get_db)):
-    clean_username = user_in.username.strip().lower()
-    clean_email = user_in.email.strip().lower()
+    try:
+        clean_username = user_in.username.strip().lower()
+        clean_email = user_in.email.strip().lower()
 
-    if db.query(models.User).filter(models.User.username == clean_username).first():
-        raise HTTPException(status_code=400, detail="Username already taken. Please choose another.")
-    if db.query(models.User).filter(models.User.email == clean_email).first():
-        raise HTTPException(status_code=400, detail="Email address already registered. Please sign in.")
+        if db.query(models.User).filter(models.User.username == clean_username).first():
+            raise HTTPException(status_code=400, detail="Username already taken. Please choose another.")
+        if db.query(models.User).filter(models.User.email == clean_email).first():
+            raise HTTPException(status_code=400, detail="Email address already registered. Please sign in.")
 
-    new_user = models.User(
-        full_name=user_in.fullName.strip(),
-        username=clean_username,
-        email=clean_email,
-        password_hash=auth.get_password_hash(user_in.password),
-        xp=0,
-        level=1,
-        streak_count=0,
-        badges=[]
-    )
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
+        new_user = models.User(
+            full_name=user_in.fullName.strip(),
+            username=clean_username,
+            email=clean_email,
+            password_hash=auth.get_password_hash(user_in.password),
+            xp=0,
+            level=1,
+            streak_count=0,
+            badges=[]
+        )
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
 
-    token = auth.create_access_token({"sub": str(new_user.id), "username": new_user.username, "email": new_user.email})
-    return {"access_token": token, "token_type": "bearer", "user": new_user}
+        token = auth.create_access_token({"sub": str(new_user.id), "username": new_user.username, "email": new_user.email})
+        return {"access_token": token, "token_type": "bearer", "user": new_user}
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Registration Error: {str(e)}")
 
 @app.post("/api/auth/login", response_model=schemas.Token)
 def login(login_in: schemas.UserLogin, db: Session = Depends(get_db)):
