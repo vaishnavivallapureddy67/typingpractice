@@ -138,6 +138,7 @@ class TypingTutorWebApp {
 
     init() {
         this.bindEvents();
+        window.addEventListener('hashchange', () => this.checkResetTokenInUrl());
         const hasResetToken = this.checkResetTokenInUrl();
         if (!hasResetToken) {
             this.checkExistingSession();
@@ -147,13 +148,19 @@ class TypingTutorWebApp {
     checkResetTokenInUrl() {
         const hash = window.location.hash || "";
         const search = window.location.search || "";
+        const fullUrl = window.location.href || "";
+
+        if (!fullUrl.includes("token=")) {
+            return false;
+        }
+
         const queryStr = hash.includes("?") ? hash.split("?")[1] : (search.includes("?") ? search.split("?")[1] : search);
         const params = new URLSearchParams(queryStr);
         const token = params.get("token");
 
-        if (token) {
+        if (token && token.trim().length > 0) {
             const tokenInput = document.getElementById('reset-token-input');
-            if (tokenInput) tokenInput.value = token;
+            if (tokenInput) tokenInput.value = token.trim();
             if (window.switchAuthView) window.switchAuthView('reset');
             return true;
         }
