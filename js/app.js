@@ -150,20 +150,29 @@ class TypingTutorWebApp {
         const search = window.location.search || "";
         const fullUrl = window.location.href || "";
 
-        if (!fullUrl.includes("token=")) {
-            return false;
+        if (fullUrl.includes("token=")) {
+            const queryStr = hash.includes("?") ? hash.split("?")[1] : (search.includes("?") ? search.split("?")[1] : search);
+            const params = new URLSearchParams(queryStr);
+            const token = params.get("token");
+
+            if (token && token.trim().length > 0) {
+                const tokenInput = document.getElementById('reset-token-input');
+                if (tokenInput) tokenInput.value = token.trim();
+                if (window.switchAuthView) window.switchAuthView('reset');
+                return true;
+            }
         }
 
-        const queryStr = hash.includes("?") ? hash.split("?")[1] : (search.includes("?") ? search.split("?")[1] : search);
-        const params = new URLSearchParams(queryStr);
-        const token = params.get("token");
-
-        if (token && token.trim().length > 0) {
-            const tokenInput = document.getElementById('reset-token-input');
-            if (tokenInput) tokenInput.value = token.trim();
-            if (window.switchAuthView) window.switchAuthView('reset');
+        if (hash.includes("forgot")) {
+            if (window.switchAuthView) window.switchAuthView('forgot');
             return true;
         }
+
+        if (hash.includes("signup")) {
+            if (window.switchAuthView) window.switchAuthView('signup');
+            return true;
+        }
+
         return false;
     }
 
